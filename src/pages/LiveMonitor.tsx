@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   ShieldCheck,
   Camera,
@@ -88,8 +88,6 @@ const LiveMonitor = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   /* ================= SIMULATE DETECTION ================= */
 
