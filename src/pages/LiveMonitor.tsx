@@ -3,10 +3,6 @@ import {
   ShieldCheck,
   Camera,
   Plus,
-  WifiOff,
-  Activity,
-  UserPlus,
-  Bell,
   AlertTriangle,
   MapPin,
   Clock,
@@ -17,11 +13,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-/* ================= STUDENT DATA (FROM ATTENDANCE) ================= */
+/* ================= STUDENT DATA ================= */
 
 const STUDENTS = [
   { name: 'Pranav A', roll: 'CS2024001' },
@@ -30,14 +24,6 @@ const STUDENTS = [
   { name: 'Rishe', roll: 'CS2024004' },
   { name: 'Shivvani', roll: 'CS2024005' },
   { name: 'Srivatsan', roll: 'CS2024006' },
-];
-
-const sampleReasons = [
-  'Sports Competition',
-  'Medical',
-  'Library Duty',
-  'Lab Prep',
-  'Placement Event'
 ];
 
 const sampleLocations = [
@@ -63,7 +49,7 @@ interface Detection {
   id: string;
   name: string;
   roll: string;
-  status: 'Bunking' | 'Authorized' | 'In Class';
+  status: 'Bunking' | 'In Class';
   x: number;
   y: number;
   w: number;
@@ -80,12 +66,6 @@ interface Alert {
   messageSent: boolean;
 }
 
-interface Exemption {
-  id: string;
-  name: string;
-  reason: string;
-}
-
 /* ================= HELPERS ================= */
 
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -99,19 +79,6 @@ function randomBox() {
   return { x, y, w, h };
 }
 
-function statusStyles(status: string) {
-  switch (status) {
-    case 'Bunking':
-      return { border: 'border-destructive', bg: 'bg-destructive/10', text: 'text-red-300' };
-    case 'Authorized':
-      return { border: 'border-success', bg: 'bg-success/10', text: 'text-green-300' };
-    case 'In Class':
-      return { border: 'border-info', bg: 'bg-info/10', text: 'text-blue-300' };
-    default:
-      return { border: 'border-muted', bg: 'bg-muted/10', text: 'text-muted-foreground' };
-  }
-}
-
 /* ================= COMPONENT ================= */
 
 const LiveMonitor = () => {
@@ -119,9 +86,6 @@ const LiveMonitor = () => {
 
   const [detections, setDetections] = useState<Detection[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [exemptions, setExemptions] = useState<Exemption[]>([]);
-  const [newExName, setNewExName] = useState('');
-  const [newExReason, setNewExReason] = useState('');
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -176,25 +140,6 @@ const LiveMonitor = () => {
     }
   };
 
-  /* ================= ADD EXEMPTION ================= */
-
-  const addExemption = () => {
-    if (!newExName || !newExReason) return;
-
-    setExemptions(prev => [
-      { id: uid(), name: newExName, reason: newExReason },
-      ...prev
-    ]);
-
-    toast({
-      title: 'Exemption Added',
-      description: `${newExName} is now authorized`
-    });
-
-    setNewExName('');
-    setNewExReason('');
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
 
@@ -205,7 +150,9 @@ const LiveMonitor = () => {
             <ShieldCheck className="h-6 w-6 text-primary" />
             <div>
               <h1 className="text-xl font-bold">Smart Campus</h1>
-              <p className="text-[10px] uppercase text-primary">Attendance & Bunking Tracker</p>
+              <p className="text-[10px] uppercase text-primary">
+                Attendance & Bunking Tracker
+              </p>
             </div>
           </div>
 
@@ -263,7 +210,9 @@ const LiveMonitor = () => {
                 {a.timestamp}
               </div>
               <div className="mt-2 flex items-center gap-2 text-xs">
-                {a.messageSent ? <CheckCircle className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
+                {a.messageSent
+                  ? <CheckCircle className="h-3 w-3" />
+                  : <Loader2 className="h-3 w-3 animate-spin" />}
                 {a.messageSent ? 'Advisor Notified' : 'Sending Alert'}
               </div>
             </div>
