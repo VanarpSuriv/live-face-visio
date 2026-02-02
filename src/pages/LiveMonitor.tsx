@@ -1,277 +1,170 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ShieldCheck,
-  Camera,
-  Plus,
-  Video,
-  WifiOff,
-  Activity,
-  UserPlus,
-  Bell,
-  AlertTriangle,
-  MapPin,
-  Clock,
-  CheckCircle,
-  Loader2,
+  Shield,
   Settings,
-  Link as LinkIcon
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+  Video,
+  PlayCircle,
+  Link2,
+  AlertTriangle,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { getCurrentPeriod, getSubjectName, SUBJECTS } from "@/data/timetable";
 
-/* ================= UTILITIES ================= */
-
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-const now = () => new Date().toLocaleTimeString();
-
-const sampleStudents = [
-  'John Doe','Jane Smith','Alex Lee','Priya Patel','Wei Chen',
-  'Carlos Ramirez','Aisha Khan','Emily Clark','Michael Brown','Sara Johnson'
-];
-
-const sampleReasons = [
-  'Sports Competition','Medical','Library Duty','Lab Prep','Placement Event'
-];
-
-const sampleLocations = [
-  'Cafeteria','Library','Quad','Gym','Parking Lot','Corridor','Garden'
-];
-
-const inClassLocations = [
-  'Room 101','Room 202','CS Lab','Lecture Hall A'
-];
-
-/* ================= TYPES ================= */
-
-interface Detection {
-  id: string;
-  name: string;
-  status: 'Bunking' | 'Authorized' | 'In Class';
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  location: string;
-}
-
-interface Alert {
+interface Incident {
   id: string;
   studentName: string;
-  location: string;
-  timestamp: string;
-  messageSent: boolean;
+  time: string;
+  type: "bunk" | "late" | "unauthorized";
 }
 
-interface Exemption {
-  id: string;
-  name: string;
-  reason: string;
-}
+export default function LiveMonitor() {
+  const [backendUrl, setBackendUrl] = useState("http://localhost:5001");
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [currentClass, setCurrentClass] = useState<{ period: number; subject: string | null; day: string } | null>(null);
+  const [recognizedStudents, setRecognizedStudents] = useState<string[]>([]);
 
-interface ClassInfo {
-  name: string;
-  expected: number;
-  current: number;
-}
+  useEffect(() => {
+    const updateCurrentClass = () => {
+      const current = getCurrentPeriod();
+      setCurrentClass(current);
+    };
+   
+    updateCurrentClass();
+    const interval = setInterval(updateCurrentClass, 30000); // Update every 30 seconds
+   
+    return () => clearInterval(interval);
+  }, []);
 
-/* ================= HELPERS ================= */
-
-function randomBox() {
-  const w = 15 + Math.random() * 15;
-  const h = 20 + Math.random() * 20;
-  const x = Math.random() * (100 - w - 4) + 2;
-  const y = Math.random() * (100 - h - 4) + 2;
-  return { x, y, w, h };
-}
-
-function statusStyles(status: string) {
-  switch (status) {
-    case 'Bunking': return { border: 'border-destructive', bg: 'bg-destructive/10', text: 'text-red-300' };
-    case 'Authorized': return { border: 'border-success', bg: 'bg-success/10', text: 'text-green-300' };
-    case 'In Class': return { border: 'border-info', bg: 'bg-info/10', text: 'text-blue-300' };
-    default: return { border: 'border-muted', bg: 'bg-muted/10', text: 'text-muted-foreground' };
-  }
-}
-
-/* ================= COMPONENT ================= */
-
-const LiveMonitor = () => {
-  const { toast } = useToast();
-
-  const [detections, setDetections] = useState<Detection[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [exemptions, setExemptions] = useState<Exemption[]>([
-    { id: '1', name: 'Jane Smith', reason: 'Medical' },
-    { id: '2', name: 'Alex Lee', reason: 'Sports Competition' }
-  ]);
-
-  const [newExName, setNewExName] = useState('');
-  const [newExReason, setNewExReason] = useState('');
-  const [isWebcamActive, setIsWebcamActive] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const [classes] = useState<ClassInfo[]>([
-    { name: 'CS101', expected: 60, current: 54 },
-    { name: 'EE207', expected: 45, current: 42 },
-    { name: 'MA110', expected: 50, current: 48 },
-    { name: 'BIO150', expected: 40, current: 36 }
-  ]);
-
-  /* ================= SIMULATION ================= */
-
-  const simulateDetection = () => {
-    const name = sampleStudents[Math.floor(Math.random() * sampleStudents.length)];
-    const box = randomBox();
-    const r = Math.random();
-
-    let status: Detection['status'] = 'In Class';
-    let location = inClassLocations[Math.floor(Math.random() * inClassLocations.length)];
-
-    if (r < 0.45) {
-      status = 'Bunking';
-      location = sampleLocations[Math.floor(Math.random() * sampleLocations.length)];
-    }
-
-    setDetections(prev => [
-      { id: uid(), name, status, ...box, location },
-      ...prev
-    ].slice(0, 6));
-
-    if (status === 'Bunking') {
-      const id = uid();
-      setAlerts(prev => [
-        { id, studentName: name, location, timestamp: now(), messageSent: false },
-        ...prev
-      ].slice(0, 20));
-
-      setTimeout(() => {
-        setAlerts(prev =>
-          prev.map(a => a.id === id ? { ...a, messageSent: true } : a)
-        );
-      }, 1500);
-    }
+  const handleConnect = async () => {
+    setIsConnecting(true);
+   
+    // Simulate connection attempt
+    setTimeout(() => {
+      setIsConnected(true);
+      setIsConnecting(false);
+    }, 1500);
   };
 
-  /* ================= ADD EXEMPTION ================= */
+  const handleDisconnect = () => {
+    setIsConnected(false);
+    setRecognizedStudents([]);
+  };
 
-  const addExemption = () => {
-    if (!newExName || !newExReason) return;
-
-    setExemptions(prev => [
-      { id: uid(), name: newExName, reason: newExReason },
-      ...prev
-    ]);
-
-    toast({
-      title: "Exemption Added",
-      description: `${newExName} is now authorized`,
-    });
-
-    setNewExName('');
-    setNewExReason('');
+  const handleSimulate = () => {
+    // Simulate face detection
+    const mockStudents = ["Pranav A", "Raghuraman R", "Shivani T", "Kumar S", "Priya M"];
+    const randomStudents = mockStudents.slice(0, Math.floor(Math.random() * 5) + 1);
+    setRecognizedStudents(randomStudents);
+   
+    // Simulate an incident occasionally
+    if (Math.random() > 0.7) {
+      const newIncident: Incident = {
+        id: Date.now().toString(),
+        studentName: mockStudents[Math.floor(Math.random() * mockStudents.length)],
+        time: new Date().toLocaleTimeString(),
+        type: "bunk",
+      };
+      setIncidents((prev) => [newIncident, ...prev].slice(0, 10));
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-
-      {/* HEADER */}
-      <header className="border-b border-white/10 bg-card/60 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <ShieldCheck className="h-6 w-6 text-primary" />
+    <DashboardLayout>
+      <div className="p-6 space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+              <Shield className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Smart Campus</h1>
-              <p className="text-[10px] text-primary font-semibold uppercase">
-                Attendance & Bunking Tracker
+              <h1 className="text-2xl font-bold text-foreground">Smart Campus</h1>
+              <p className="text-sm text-primary font-medium tracking-wide">
+                ATTENDANCE & BUNKING TRACKER
               </p>
             </div>
           </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings className="h-4 w-4" />
               Backend
             </Button>
-
-            <Button
-              onClick={() => setIsWebcamActive(!isWebcamActive)}
-              variant={isWebcamActive ? "destructive" : "secondary"}
-              size="sm"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              {isWebcamActive ? 'Stop' : 'Start'} Webcam
+            <Button variant="outline" size="sm" className="gap-2">
+              <Video className="h-4 w-4" />
+              Start Webcam
             </Button>
-
-            <Button onClick={simulateDetection} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button
+              size="sm"
+              className="gap-2 bg-primary hover:bg-primary/90"
+              onClick={handleSimulate}
+            >
+              <PlayCircle className="h-4 w-4" />
               Simulate
             </Button>
           </div>
         </div>
 
-        {/* BACKEND SETTINGS */}
-        {showSettings && (
-          <div className="border-t border-white/10 bg-card/80 px-6 py-4">
-            <div className="max-w-7xl mx-auto flex gap-3 items-center">
-              <Input
-                value="http://localhost:5001"
-                readOnly
-                className="bg-background/50 border-white/10"
-              />
-              <Button
-                onClick={() => window.open("http://localhost:5001", "_blank")}
-              >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Connect
-              </Button>
-            </div>
+        {/* Current Class Info */}
+        {currentClass && (
+          <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <p className="text-sm text-muted-foreground">Currently in session:</p>
+            <p className="text-lg font-semibold text-foreground">
+              Period {currentClass.period} - {getSubjectName(currentClass.subject)}
+            </p>
           </div>
         )}
-      </header>
 
-      {/* MAIN */}
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-8 grid grid-cols-12 gap-8">
-        <section className="col-span-12 lg:col-span-8">
-          <div className="aspect-video bg-black flex items-center justify-center">
-            {isWebcamActive ? (
-              <video ref={videoRef} autoPlay muted className="w-full h-full object-cover" />
-            ) : (
-              <WifiOff className="h-20 w-20 text-muted-foreground" />
-            )}
-          </div>
-        </section>
+        {/* Connection Input */}
+        <div className="flex items-center gap-4">
+          <Input
+            value={backendUrl}
+            onChange={(e) => setBackendUrl(e.target.value)}
+            placeholder="Enter backend URL..."
+            className="flex-1 bg-secondary border-border"
+          />
+          <Button
+            onClick={isConnected ? handleDisconnect : handleConnect}
+            disabled={isConnecting}
+            className={`gap-2 min-w-[120px] ${
+              isConnected
+                ? "bg-destructive hover:bg-destructive/90"
+                : "bg-primary hover:bg-primary/90"
+            }`}
+          >
+            <Link2 className="h-4 w-4" />
+            {isConnecting ? "Connecting..." : isConnected ? "Disconnect" : "Connect"}
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Connect to your Python backend for real face recognition
+          </span>
+        </div>
 
-        <aside className="col-span-12 lg:col-span-4 space-y-4">
-          {alerts.map(a => (
-            <div key={a.id} className="p-4 bg-card border rounded-lg">
-              <div className="flex justify-between">
-                <span className="font-bold">{a.studentName}</span>
-                <AlertTriangle className="text-destructive h-4 w-4" />
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Live Feed */}
+          <Card className="lg:col-span-2 bg-card border-border card-glow">
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div className="flex items-center gap-2">
+                <Video className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">LIVE SURVEILLANCE FEED</CardTitle>
               </div>
-              <div className="text-xs mt-1 text-muted-foreground">
-                {a.location} • {a.timestamp}
+              <div className="flex items-center gap-3">
+                <Badge className="status-class gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-blue-400" />
+                  CLASS
+                </Badge>
+                <Badge className="status-bunk gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-400" />
+                  BUNK
+                </Badge>
               </div>
-              <div className="mt-2 text-xs flex items-center gap-2">
-                {a.messageSent ? <CheckCircle className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
-                {a.messageSent ? 'Advisor Notified' : 'Sending Alert'}
-              </div>
-            </div>
-          ))}
-        </aside>
-      </main>
-    </div>
-  );
-};
-
-export default LiveMonitor;
+            </CardHeader>
+            <CardContent>
