@@ -1,12 +1,19 @@
-import { useCallback } from "react";
-import jsPDF from "jspdf";
+"use client";
 
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Mail } from "lucide-react";
+import {
+  FileText,
+  Download,
+  Calendar,
+  Mail,
+  CheckCircle,
+} from "lucide-react";
+import jsPDF from "jspdf";
 
-/* ================= FAKE STUDENT DATA ================= */
+/* ---------------- STUDENT REFERENCE ---------------- */
 
 const STUDENTS = [
   { roll: "2025IT0123", name: "KISHORE P" },
@@ -20,126 +27,208 @@ const STUDENTS = [
   { roll: "2025IT0171", name: "NIGILA FATHIMA L" },
   { roll: "2025IT0098", name: "NISHANTH JACOB E" },
   { roll: "2025IT1087", name: "POOJA SRI M" },
+  { roll: "2025IT0041", name: "PRADYUMNA KOYYALAM SRIRAM" },
   { roll: "2025IT1070", name: "PRANAV A" },
+  { roll: "2025IT1032", name: "PRANAYA M" },
   { roll: "2025IT1093", name: "PREMNATH R" },
+  { roll: "2025IT0327", name: "PRIYADARSHAN M" },
+  { roll: "2025IT0424", name: "PRIYADHARSHINI K" },
+  { roll: "2025IT1020", name: "R RAGHURAMAN" },
+  { roll: "2025IT1036", name: "RAAKESH KESAVAN" },
+  { roll: "2025IT1072", name: "RAGHAVI S" },
+  { roll: "2025IT1033", name: "RAGHUL M" },
+  { roll: "2025IT0065", name: "RAHULGANDHI V B" },
+  { roll: "2025IT1062", name: "RAJINI K" },
+  { roll: "2025IT0248", name: "REKHA P" },
+  { roll: "2025IT0140", name: "RITHICK T" },
+  { roll: "2025IT0229", name: "RITIKA S" },
+  { roll: "2025IT0196", name: "S NEHA" },
 ];
 
-/* ================= HELPERS ================= */
+/* ---------------- HELPERS ---------------- */
 
-function getRandomAbsentees(count: number) {
-  return [...STUDENTS].sort(() => Math.random() - 0.5).slice(0, count);
+function getRandomStudents(count: number) {
+  return [...STUDENTS].sort(() => 0.5 - Math.random()).slice(0, count);
 }
 
-/* ================= PDF GENERATION ================= */
+function formatStudents(students: any[]) {
+  return students.map((s, i) => `${i + 1}. ${s.roll} - ${s.name}`).join("\n");
+}
 
-function generateAbsenteePDF() {
+/* ---------------- PDF CONTENT ---------------- */
+
+function getPDFContentByType(report: any) {
+  const absentees = getRandomStudents(Math.floor(Math.random() * 6) + 3);
+
+  switch (report.type) {
+    case "attendance":
+      return `
+ATTENDANCE REPORT
+------------------------------
+Report Name : ${report.title}
+Date        : ${report.date}
+
+Total Students : 60
+Present        : ${60 - absentees.length}
+Absent         : ${absentees.length}
+
+Absent Students:
+${formatStudents(absentees)}
+
+Attendance % : ${Math.floor(85 + Math.random() * 10)}%
+`;
+
+    case "absentee":
+      return `
+ABSENTEE NOTIFICATION
+------------------------------
+Class : ${report.title}
+Date  : ${report.date}
+
+Absent Students:
+${formatStudents(absentees)}
+
+Emails Sent : ${report.emails}
+SMTP Status : SUCCESS
+`;
+
+    case "alert":
+      return `
+LOW ATTENDANCE ALERT
+------------------------------
+Alert Date : ${report.date}
+
+Students Below 75% Attendance:
+${formatStudents(absentees.slice(0, 3))}
+
+Action Required:
+• Notify parents
+• Student counselling
+`;
+
+    case "summary":
+      return `
+DAILY ATTENDANCE SUMMARY
+------------------------------
+Date : ${report.date}
+
+Classes Conducted : ${6 + Math.floor(Math.random() * 3)}
+Average Attendance : ${Math.floor(80 + Math.random() * 15)}%
+
+Frequently Absent Students:
+${formatStudents(absentees.slice(0, 4))}
+`;
+
+    default:
+      return "No data available.";
+  }
+}
+
+/* ---------------- REAL PDF GENERATOR ---------------- */
+
+function downloadMockPDF(report: any) {
   const doc = new jsPDF();
+  const content = getPDFContentByType(report);
 
-  const absentees = getRandomAbsentees(
-    Math.floor(Math.random() * 5) + 4
-  );
-
-  doc.setFontSize(16);
-  doc.text("ABSENTEE LIST", 14, 20);
-
-  doc.setFontSize(11);
-  doc.text("Subject : IT22201", 14, 30);
-  doc.text("Date    : 27-01-2026", 14, 36);
-
-  let y = 50;
-  doc.setFontSize(12);
-  doc.text("S.No", 14, y);
-  doc.text("Roll Number", 30, y);
-  doc.text("Student Name", 80, y);
-
-  y += 4;
-  doc.line(14, y, 195, y);
-  y += 8;
-
+  doc.setFont("courier");
   doc.setFontSize(10);
-  absentees.forEach((s, i) => {
-    doc.text(String(i + 1), 14, y);
-    doc.text(s.roll, 30, y);
-    doc.text(s.name, 80, y);
-    y += 7;
 
-    if (y > 280) {
-      doc.addPage();
-      y = 20;
-    }
-  });
+  const lines = doc.splitTextToSize(content, 180);
+  doc.text(lines, 10, 15);
 
-  y += 10;
-  doc.text(
-    "This is a system-generated absentee report.",
-    14,
-    y
-  );
+  const fileName = `${report.title
+    .replace(/\s+/g, "_")
+    .toLowerCase()}_${report.date}.pdf`;
 
-  // IMPORTANT: filename must match backend email script
-  doc.save("absentees_IT22201.pdf");
+  doc.save(fileName);
 }
 
-/* ================= PAGE ================= */
+/* ---------------- REPORT DATA ---------------- */
+
+const reports = [
+  {
+    id: 1,
+    title: "Weekly Attendance Report",
+    date: "2026-01-27",
+    type: "attendance",
+    status: "ready",
+    emails: 3,
+  },
+  {
+    id: 2,
+    title: "Absentee Notification - IT22201",
+    date: "2026-01-27",
+    type: "absentee",
+    status: "sent",
+    emails: 5,
+  },
+  {
+    id: 3,
+    title: "Low Attendance Alert",
+    date: "2026-01-26",
+    type: "alert",
+    status: "sent",
+    emails: 3,
+  },
+  {
+    id: 4,
+    title: "Daily Summary - Monday",
+    date: "2026-01-27",
+    type: "summary",
+    status: "ready",
+    emails: 0,
+  },
+];
+
+/* ---------------- PAGE ---------------- */
 
 export default function Reports() {
-
-  const onExtract = useCallback(() => {
-    generateAbsenteePDF();
-  }, []);
-
-  const sendReport = useCallback(async () => {
-    try {
-      const res = await fetch("http://localhost:5000/send-report", {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to send report");
-      }
-
-      alert("✅ Report emailed successfully");
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to send report");
-    }
-  }, []);
-
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
 
-        <h1 className="text-2xl font-bold">
-          Reports & Notifications
-        </h1>
+        <h1 className="text-2xl font-bold">Reports & Notifications</h1>
 
         <Card>
           <CardHeader>
-            <CardTitle>Absentee Report</CardTitle>
+            <CardTitle>Generated Reports</CardTitle>
           </CardHeader>
 
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Generate and send absentee report for IT22201.
-            </p>
-
-            <div className="flex gap-3">
-              {/* Extract PDF */}
-              <Button onClick={onExtract} className="gap-2">
-                <Download className="h-4 w-4" />
-                Extract Report
-              </Button>
-
-              {/* Send Email */}
-              <Button
-                onClick={sendReport}
-                variant="secondary"
-                className="gap-2"
+          <CardContent className="space-y-3">
+            {reports.map((report) => (
+              <div
+                key={report.id}
+                className="flex items-center justify-between p-4 rounded-lg bg-secondary/30"
               >
-                <Mail className="h-4 w-4" />
-                Send Report
-              </Button>
-            </div>
+                <div>
+                  <p className="font-medium">{report.title}</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(report.date).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge>
+                    {report.status === "sent" ? (
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Sent
+                      </span>
+                    ) : (
+                      "Ready"
+                    )}
+                  </Badge>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => downloadMockPDF(report)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
