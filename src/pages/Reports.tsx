@@ -1,104 +1,144 @@
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileText, Download, Calendar } from "lucide-react";
+import { useCallback } from "react";
 import jsPDF from "jspdf";
 
-/* ================= REPORT DATA ================= */
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Download, Mail } from "lucide-react";
 
-const reports = [
-  {
-    id: 1,
-    title: "Weekly Attendance Report",
-    date: "2026-01-27",
-  },
-  {
-    id: 2,
-    title: "Absentee Notification - IT22201",
-    date: "2026-01-27",
-  },
-  {
-    id: 3,
-    title: "Low Attendance Alert",
-    date: "2026-01-26",
-  },
-  {
-    id: 4,
-    title: "Daily Summary - Monday",
-    date: "2026-01-27",
-  },
+/* ================= FAKE STUDENT DATA ================= */
+
+const STUDENTS = [
+  { roll: "2025IT0123", name: "KISHORE P" },
+  { roll: "2025IT1063", name: "KISHORE T" },
+  { roll: "2025IT1022", name: "KRITHIKA S" },
+  { roll: "2025IT0420", name: "LITHIKA P" },
+  { roll: "2025IT0500", name: "MADHUMITHA A" },
+  { roll: "2025IT0316", name: "MITHRA M S" },
+  { roll: "2025IT0366", name: "MOHAMMED ASLAM A" },
+  { roll: "2025IT0511", name: "MOTHEESH D" },
+  { roll: "2025IT0171", name: "NIGILA FATHIMA L" },
+  { roll: "2025IT0098", name: "NISHANTH JACOB E" },
+  { roll: "2025IT1087", name: "POOJA SRI M" },
+  { roll: "2025IT1070", name: "PRANAV A" },
+  { roll: "2025IT1093", name: "PREMNATH R" },
 ];
 
-/* ================= PDF DOWNLOAD (EMPTY BUT VALID) ================= */
+/* ================= HELPERS ================= */
 
-function downloadEmptyPDF(filename: string) {
+function getRandomAbsentees(count: number) {
+  return [...STUDENTS].sort(() => Math.random() - 0.5).slice(0, count);
+}
+
+/* ================= PDF GENERATION ================= */
+
+function generateAbsenteePDF() {
   const doc = new jsPDF();
-  doc.text(" ", 10, 10); // ensures valid PDF
-  doc.save(filename);
+
+  const absentees = getRandomAbsentees(
+    Math.floor(Math.random() * 5) + 4
+  );
+
+  doc.setFontSize(16);
+  doc.text("ABSENTEE LIST", 14, 20);
+
+  doc.setFontSize(11);
+  doc.text("Subject : IT22201", 14, 30);
+  doc.text("Date    : 27-01-2026", 14, 36);
+
+  let y = 50;
+  doc.setFontSize(12);
+  doc.text("S.No", 14, y);
+  doc.text("Roll Number", 30, y);
+  doc.text("Student Name", 80, y);
+
+  y += 4;
+  doc.line(14, y, 195, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  absentees.forEach((s, i) => {
+    doc.text(String(i + 1), 14, y);
+    doc.text(s.roll, 30, y);
+    doc.text(s.name, 80, y);
+    y += 7;
+
+    if (y > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  });
+
+  y += 10;
+  doc.text(
+    "This is a system-generated absentee report.",
+    14,
+    y
+  );
+
+  // IMPORTANT: filename must match backend email script
+  doc.save("absentees_IT22201.pdf");
 }
 
 /* ================= PAGE ================= */
 
 export default function Reports() {
+
+  const onExtract = useCallback(() => {
+    generateAbsenteePDF();
+  }, []);
+
+  const sendReport = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:5000/send-report", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to send report");
+      }
+
+      alert("✅ Report emailed successfully");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to send report");
+    }
+  }, []);
+
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div className="p-6 space-y-6">
 
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Reports & Notifications</h1>
-            <p className="text-muted-foreground mt-1">
-              Download generated attendance reports
-            </p>
-          </div>
+        <h1 className="text-2xl font-bold">
+          Reports & Notifications
+        </h1>
 
-          {/* Placeholder button (does nothing intentionally) */}
-          <Button className="gap-2 bg-primary hover:bg-primary/90">
-            <FileText className="h-4 w-4" />
-            Generate Report
-          </Button>
-        </div>
-
-        {/* Reports List */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Generated Reports
-            </CardTitle>
+            <CardTitle>Absentee Report</CardTitle>
           </CardHeader>
 
           <CardContent>
-            <div className="space-y-3">
-              {reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">{report.title}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(report.date).toLocaleDateString()}
-                    </p>
-                  </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Generate and send absentee report for IT22201.
+            </p>
 
-                  {/* DOWNLOAD ICON */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() =>
-                      downloadEmptyPDF(
-                        `${report.title.replace(/\s+/g, "_")}.pdf`
-                      )
-                    }
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+            <div className="flex gap-3">
+              {/* Extract PDF */}
+              <Button onClick={onExtract} className="gap-2">
+                <Download className="h-4 w-4" />
+                Extract Report
+              </Button>
+
+              {/* Send Email */}
+              <Button
+                onClick={sendReport}
+                variant="secondary"
+                className="gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Send Report
+              </Button>
             </div>
           </CardContent>
         </Card>
