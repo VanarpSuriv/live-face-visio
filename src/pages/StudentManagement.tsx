@@ -18,11 +18,12 @@ interface Student {
 }
 
 const initialStudents: Student[] = [
-  { id: '1', name: 'John Doe', registrationNo: 'CS2024001', email: 'john@svce.ac.in', phone: '+91 9876543210', department: 'Computer Science', year: 2, facultyAdvisor: 'Dr. Smith' },
-  { id: '2', name: 'Jane Smith', registrationNo: 'CS2024002', email: 'jane@svce.ac.in', phone: '+91 9876543211', department: 'Computer Science', year: 2, facultyAdvisor: 'Dr. Smith' },
-  { id: '3', name: 'Alex Lee', registrationNo: 'EC2024001', email: 'alex@svce.ac.in', phone: '+91 9876543212', department: 'Electronics', year: 3, facultyAdvisor: 'Dr. Johnson' },
-  { id: '4', name: 'Priya Patel', registrationNo: 'ME2024001', email: 'priya@svce.ac.in', phone: '+91 9876543213', department: 'Mechanical', year: 1, facultyAdvisor: 'Dr. Williams' },
-  { id: '5', name: 'Wei Chen', registrationNo: 'CS2024003', email: 'wei@svce.ac.in', phone: '+91 9876543214', department: 'Computer Science', year: 4, facultyAdvisor: 'Dr. Brown' },
+  { id: '1', name: 'Pranav A', registrationNo: 'CS2024001', email: 'pranav.a@svce.ac.in', phone: '+91 9876543210', department: 'Computer Science', year: 2, facultyAdvisor: 'Mr. Arun' },
+  { id: '2', name: 'Suresh', registrationNo: 'CS2024002', email: 'suresh@svce.ac.in', phone: '+91 9876543211', department: 'Computer Science', year: 2, facultyAdvisor: 'Mr. Arun' },
+  { id: '3', name: 'Modhini', registrationNo: 'EC2024001', email: 'modhini@svce.ac.in', phone: '+91 9876543212', department: 'Electronics', year: 3, facultyAdvisor: 'Dr. Sharon' },
+  { id: '4', name: 'Rishe', registrationNo: 'ME2024001', email: 'rishe@svce.ac.in', phone: '+91 9876543213', department: 'Mechanical', year: 1, facultyAdvisor: 'Dr. Sharon' },
+  { id: '5', name: 'Shivvani', registrationNo: 'CS2024003', email: 'shivvani@svce.ac.in', phone: '+91 9876543214', department: 'Computer Science', year: 4, facultyAdvisor: 'Mr. Arun' },
+  { id: '6', name: 'Srivatsan', registrationNo: 'CS2024004', email: 'srivatsan@svce.ac.in', phone: '+91 9876543215', department: 'Computer Science', year: 2, facultyAdvisor: 'Dr. Sharon' },
 ];
 
 const StudentManagement = () => {
@@ -35,7 +36,8 @@ const StudentManagement = () => {
   const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.registrationNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.department.toLowerCase().includes(searchTerm.toLowerCase())
+    s.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.facultyAdvisor.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddStudent = () => {
@@ -121,6 +123,15 @@ const StudentManagement = () => {
                   className="bg-background/50 border-white/10"
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Faculty Advisor</Label>
+                <Input
+                  value={newStudent.facultyAdvisor || ''}
+                  onChange={(e) => setNewStudent(prev => ({ ...prev, facultyAdvisor: e.target.value }))}
+                  className="bg-background/50 border-white/10"
+                  placeholder="e.g. Mr. Arun or Dr. Sharon"
+                />
+              </div>
               <Button onClick={handleAddStudent} className="w-full bg-primary hover:bg-primary/90">
                 Add Student
               </Button>
@@ -133,7 +144,7 @@ const StudentManagement = () => {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search students..."
+          placeholder="Search by name, ID, or faculty advisor..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 bg-background/50 border-white/10"
@@ -186,7 +197,7 @@ const StudentManagement = () => {
 
             <div className="mt-4 pt-4 border-t border-white/10">
               <p className="text-xs text-muted-foreground">
-                Faculty Advisor: <span className="text-foreground font-medium">{student.facultyAdvisor}</span>
+                Faculty Advisor: <span className="text-primary font-medium">{student.facultyAdvisor}</span>
               </p>
             </div>
           </div>
